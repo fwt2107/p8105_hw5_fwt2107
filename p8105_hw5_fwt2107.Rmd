@@ -1,0 +1,57 @@
+---
+title: "p8105_hw5_fwt2107"
+author: "Felix Tran"
+date: "November 3, 2018"
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+```
+
+# Problem 1
+
+### Reading data
+
+1. Create function **tidy_subject_data()** which will be used later to tidy 
+the subject data.  
+
+2. Read in all file names
+
+3. Read in the data contained in those files to form a new variable of lists in 
+the tibble (each file's data is an individual dataset)
+
+4. Remove the '.csv' from the file names to leave the subject number and 
+treatment arm
+
+5. Plot 
+```{r}
+tidy_subject_data <- function(df) {
+    gather(data = df, key = 'week', value = 'score', week_1:week_8) %>% 
+    separate(col = week, into = c('deleteable', 'week'), sep = '_') %>% 
+    select(-deleteable)
+}
+
+study_df <- tibble(
+  file_name = list.files('./hw5_data/data'),
+  subject_data = purrr::map(str_c('./hw5_data/data/', file_name), 
+                            readr::read_csv)
+) %>% 
+  separate(col = file_name, into = c('file_name', 'deletable'), sep = '\\.') %>% 
+  select(-deletable) %>% 
+  mutate(subject_data = purrr::map(subject_data, tidy_subject_data),
+         treatment_group = 
+           if_else(str_detect(file_name, 'con'), 'Control', 'Experimental')) %>% 
+  unnest
+
+study_df %>% 
+  group_by(file_name, week) %>% 
+  ggplot(aes(x = week, y = score, color = treatment_group)) +
+  geom_line(aes(x = week, y = score)) +
+  facet_grid(. ~ treatment_group)
+```
+
+

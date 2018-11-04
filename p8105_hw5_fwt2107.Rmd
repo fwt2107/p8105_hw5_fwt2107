@@ -126,12 +126,16 @@ open/no arrest).
 
 ### Homicides by city
 
+1. Upon inspection of the data, one homicide listed Tulsa as the city but AL as
+the state. This mistake was corrected by changing the reported state to OK.
+
 1. Create variable **city_state** to concatenate city and state information
 
 2. Count the total number of homicides and the number of unsolved homicides by
 location
 ```{r}
 homicide_df <- homicide_df %>% 
+  mutate(state = if_else(state == 'AL' & city == 'Tulsa', 'OK', state)) %>% 
   mutate(city_state = str_c(city, ', ', state))
 
 options(tibble.print_max = Inf)
@@ -196,7 +200,44 @@ unsolved_df <- homicide_df %>%
 
 
 ### Plotting the newly created dataset
-```{r}
 
+1. Created a function **prop_transform** to transform the values of the 
+estimated proportion and confidence limits for unsolved homicides into 
+percentages
+
+2. Saved the order of the 50 cities according to proportion of unsolved
+homicides in variable **city_factor_order**
+
+3. Transformed dataset by applying **prop_transform** to the estimated 
+proportion and confidence limits, as well as transforming variable 
+**city_state** into a factor with the values ordered according to 
+**city_factor_order**
+
+4. Plot the estimated proportion of unsolved homicides with 95% CI in the cities
+```{r}
+prop_transform <- function(x) {
+  round((x * 100), digits = 0)
+}
+
+city_factor_order <- unsolved_df$city_state[order(unsolved_df$estimate)]
+
+unsolved_df %>% 
+  mutate(estimate = prop_transform(estimate),
+         conf_low = prop_transform(conf_low),
+         conf_high = prop_transform(conf_high),
+         city_state = readr::parse_factor(city_state, city_factor_order)) %>% 
+  ggplot(aes(x = city_state, y = estimate)) +
+  geom_bar(stat = "identity", position = position_dodge(width = 0.9), 
+           fill = 'blue', alpha = 0.6) +
+  geom_errorbar(aes(ymin = conf_low, ymax = conf_high), alpha = 0.75) +
+  labs(title = 'Estimated proportion of homicides that are unsolved for 
+       50 US cities with 95% confidence intervals',
+       y = 'Estimate (%)',
+       x = 'City') +
+  coord_flip() +
+  theme(axis.text.y = element_text(size = 3.5, color = 'black'))
 ```
 
+The proportion of homicides which are unsolved range from less than 30% in 
+Richmond, VA to over 70% in Chicago, IL. In the majority of the 50 listed 
+cities, over half of all homicides are unsolved. 

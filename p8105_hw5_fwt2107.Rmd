@@ -109,12 +109,12 @@ head(homicide_df)
 unique(homicide_df$disposition)
 
 
-
 prop_male <- round((length(which(homicide_df$victim_sex == 'Male')) / 
                 nrow(homicide_df)) * 100, digits = 0)
 
-prop_unsolved <- round((length(which(homicide_df$disposition != 'Closed by arrest')) /
-                    nrow(homicide_df)) * 100, digits = 0)
+prop_unsolved <- round((length(which(
+  homicide_df$disposition != 'Closed by arrest')) / nrow(homicide_df)) * 100, 
+  digits = 0)
 ```
 The dataset contains information about `r nrow(homicide_df)` homicides which 
 occurred in `r length(unique(homicide_df$city))` cities across 
@@ -140,5 +140,63 @@ homicide_df %>%
   summarize(total_homicides = n(),
             unsolved_homicides = 
               length(which(disposition != 'Closed by arrest')))
+```
+
+### Baltimore, MD
+1. Repeat the same process as the previous example, but focusing only on 
+Baltimore
+
+2. Use the **prop.test** function to estimate the proportion of homicides that
+are unsolved in Baltimore with 95% CI.
+```{r}
+baltimore_results_df <- homicide_df %>% 
+  group_by(city_state) %>% 
+  filter(city_state == 'Baltimore, MD') %>% 
+  summarize(unsolved_homicides = 
+              length(which(disposition != 'Closed by arrest')),
+            total_homicides = n(),
+            prop_results = purrr::map2(unsolved_homicides, total_homicides,
+                                       prop.test)) %>% 
+  select(prop_results) %>% 
+  broom::tidy(prop_results) %>% 
+  janitor::clean_names()
+
+balt_unsolved_est <- round(baltimore_results_df$estimate * 100, digits = 0)
+balt_unsolved_conf_low <- round((baltimore_results_df$conf_low * 100), 
+                               digits = 0)
+balt_unsolved_conf_high <- round((baltimore_results_df$conf_high * 100), 
+                                digits = 0)
+```
+An estimated `r balt_unsolved_est`% (95% CI: `r balt_unsolved_conf_low`%, 
+`r balt_unsolved_conf_high`%) of homicides in Baltimore are unsolved. 
+
+
+### Creating a dataset with the estimate and 95% CI of unsolved homicides in
+### all 50 cities
+
+1. Repeat the same process as the previous Baltimore example, but with all 
+50 cities
+
+2. Use the **prop.test** function to estimate the proportion of homicides that
+are unsolved in each city with 95% CI.
+```{r}
+unsolved_df <- homicide_df %>% 
+  group_by(city_state) %>% 
+  summarize(unsolved_homicides = 
+              length(which(disposition != 'Closed by arrest')),
+            total_homicides = n(),
+            prop_results = purrr::map2(unsolved_homicides, total_homicides,
+                                       prop.test)) %>% 
+  select(city_state, prop_results) %>% 
+  mutate(prop_results = purrr::map(prop_results, broom::tidy)) %>% 
+  unnest %>% 
+  janitor::clean_names() %>% 
+  select(city_state, estimate, conf_low, conf_high)
+```
+
+
+### Plotting the newly created dataset
+```{r}
+
 ```
 

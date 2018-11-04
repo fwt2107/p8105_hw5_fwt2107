@@ -427,8 +427,9 @@ homicide_df &lt;- readr::read_csv(data_url) %&gt;%
 <pre class="r"><code>prop_male &lt;- round((length(which(homicide_df$victim_sex == 'Male')) / 
                 nrow(homicide_df)) * 100, digits = 0)
 
-prop_unsolved &lt;- round((length(which(homicide_df$disposition != 'Closed by arrest')) /
-                    nrow(homicide_df)) * 100, digits = 0)</code></pre>
+prop_unsolved &lt;- round((length(which(
+  homicide_df$disposition != 'Closed by arrest')) / nrow(homicide_df)) * 100, 
+  digits = 0)</code></pre>
 <p>The dataset contains information about 52179 homicides which occurred in 50 cities across 28 states between 2007 - 2017. 78% of the victims were male, and the average victim age was 32 years old. 51% of all homicides are unsolved (closed without arrest or open/no arrest).</p>
 </div>
 <div id="homicides-by-city" class="section level3">
@@ -500,6 +501,54 @@ homicide_df %&gt;%
 ## 49 Tulsa, AL                        1                  0
 ## 50 Tulsa, OK                      583                193
 ## 51 Washington, DC                1345                589</code></pre>
+</div>
+<div id="baltimore-md" class="section level3">
+<h3>Baltimore, MD</h3>
+<ol style="list-style-type: decimal">
+<li><p>Repeat the same process as the previous example, but focusing only on Baltimore</p></li>
+<li><p>Use the <strong>prop.test</strong> function to estimate the proportion of homicides that are unsolved in Baltimore with 95% CI.</p></li>
+</ol>
+<pre class="r"><code>baltimore_results_df &lt;- homicide_df %&gt;% 
+  group_by(city_state) %&gt;% 
+  filter(city_state == 'Baltimore, MD') %&gt;% 
+  summarize(unsolved_homicides = 
+              length(which(disposition != 'Closed by arrest')),
+            total_homicides = n(),
+            prop_results = purrr::map2(unsolved_homicides, total_homicides,
+                                       prop.test)) %&gt;% 
+  select(prop_results) %&gt;% 
+  broom::tidy(prop_results) %&gt;% 
+  janitor::clean_names()
+
+balt_unsolved_est &lt;- round(baltimore_results_df$estimate * 100, digits = 0)
+balt_unsolved_conf_low &lt;- round((baltimore_results_df$conf_low * 100), 
+                               digits = 0)
+balt_unsolved_conf_high &lt;- round((baltimore_results_df$conf_high * 100), 
+                                digits = 0)</code></pre>
+<p>An estimated 65% (95% CI: 63%, 66%) of homicides in Baltimore are unsolved.</p>
+</div>
+<div id="creating-a-dataset-with-the-estimate-and-95-ci-of-unsolved-homicides-in" class="section level3">
+<h3>Creating a dataset with the estimate and 95% CI of unsolved homicides in</h3>
+</div>
+<div id="all-50-cities" class="section level3">
+<h3>all 50 cities</h3>
+<pre class="r"><code>unsolved_df &lt;- homicide_df %&gt;% 
+  group_by(city_state) %&gt;% 
+  summarize(unsolved_homicides = 
+              length(which(disposition != 'Closed by arrest')),
+            total_homicides = n(),
+            prop_results = purrr::map2(unsolved_homicides, total_homicides,
+                                       prop.test)) %&gt;% 
+  select(city_state, prop_results) %&gt;% 
+  mutate(prop_results = purrr::map(prop_results, broom::tidy)) %&gt;% 
+  unnest %&gt;% 
+  janitor::clean_names() %&gt;% 
+  select(city_state, estimate, conf_low, conf_high)</code></pre>
+<pre><code>## Warning in .f(.x[[1L]], .y[[1L]], ...): Chi-squared approximation may be
+## incorrect</code></pre>
+</div>
+<div id="plotting-the-newly-created-dataset" class="section level3">
+<h3>Plotting the newly created dataset</h3>
 </div>
 </div>
 

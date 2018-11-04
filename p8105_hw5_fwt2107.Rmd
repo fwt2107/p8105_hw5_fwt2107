@@ -10,11 +10,17 @@ editor_options:
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 library(tidyverse)
+
+knitr::opts_chunk$set(
+  fig.width = 6,
+  fig.asp = .6,
+  out.width = "90%"
+)
+
+theme_set(theme_bw() + theme(legend.position = "right"))
 ```
 
 # Problem 1
-
-### Reading data
 
 1. Create function **tidy_subject_data()** which will be used later to tidy 
 the subject data.  
@@ -27,7 +33,7 @@ the tibble (each file's data is an individual dataset)
 4. Remove the '.csv' from the file names to leave the subject number and 
 treatment arm
 
-5. Plot 
+5. Plot spaghetti plot of subject scores over time by treatment group
 ```{r}
 tidy_subject_data <- function(df) {
     gather(data = df, key = 'week', value = 'score', week_1:week_8) %>% 
@@ -44,14 +50,76 @@ study_df <- tibble(
   select(-deletable) %>% 
   mutate(subject_data = purrr::map(subject_data, tidy_subject_data),
          treatment_group = 
-           if_else(str_detect(file_name, 'con'), 'Control', 'Experimental')) %>% 
-  unnest
-
+           if_else(str_detect(file_name, 'con'), 'Control', 'Experimental'))
+  
 study_df %>% 
-  group_by(file_name, week) %>% 
-  ggplot(aes(x = week, y = score, color = treatment_group)) +
-  geom_line(aes(x = week, y = score)) +
-  facet_grid(. ~ treatment_group)
+  unnest %>% 
+  ggplot(aes(x = week, y = score, color = treatment_group, group = file_name)) +
+  geom_line(alpha = 0.6) +
+  facet_grid(. ~ treatment_group) +
+  labs(title = 'Subject scores over time by treatment group',
+       x = 'Week',
+       y = 'Score')
 ```
+At the start of the study, the experimental group scores ranged between -1 to 4, 
+while the control group ranged between 0 to 2.5. The scores in the control group 
+as a whole remained unchanged by the end of the study. However, the scores in 
+the experimental group as a whole increased, placing the experimental group
+between 2.5 to 7.5 points. 
 
 
+
+# Problem 2
+
+### Describing the raw data
+
+The raw data contains 12 variables:
+
+1. uid - A unique ID for each homicide including the city
+
+2. reported_date - The date when the homicide was reported (YYMMDD)
+
+3. victim_last - Victim's last name
+
+4. victim_first - Victim's first name
+
+5. victim_race - Victim's race
+
+6. victim_age - Victim's age in years
+
+7. victim_sex - Victim's sex 
+
+8. City - City in which the homicide occurred
+
+9. State - State in which the homicide occurred 
+
+10. lat - Latitude where the homicide occurred
+
+11. long - Longitude where the homicide occurred
+
+12. disposition - Describes if the homicide investigation resulted in an arrest,
+no arrest, or if the case was closed without an arrest being made
+```{r}
+data_url <- RCurl::getURL('https://raw.githubusercontent.com/washingtonpost/data-homicides/master/homicide-data.csv')
+
+homicide_df <- readr::read_csv(data_url) %>% 
+  mutate(victim_age = as.integer(victim_age),
+         reported_date = lubridate::ymd(reported_date))
+head(homicide_df)
+unique(homicide_df$disposition)
+
+
+
+prop_male <- round((length(which(homicide_df$victim_sex == 'Male')) / 
+                nrow(homicide_df)) * 100, digits = 0)
+
+prop_unsolved <- round((length(which(homicide_df$disposition != 'Closed by arrest')) /
+                    nrow(homicide_df)) * 100, digits = 0)
+```
+The dataset contains information about `r nrow(homicide_df)` homicides which 
+occurred in `r length(unique(homicide_df$city))` cities across 
+`r length(unique(homicide_df$state))` states between 2007 - 2017. `r prop_male`%
+of the victims were male, and the average victim age was 
+`r round(mean(homicide_df$victim_age, na.rm = T), digits = 0)` years old. 
+`r prop_unsolved`% of all homicides are unsolved (closed without arrest or 
+open/no arrest).

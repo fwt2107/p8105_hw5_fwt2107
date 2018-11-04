@@ -123,3 +123,22 @@ of the victims were male, and the average victim age was
 `r round(mean(homicide_df$victim_age, na.rm = T), digits = 0)` years old. 
 `r prop_unsolved`% of all homicides are unsolved (closed without arrest or 
 open/no arrest).
+
+### Homicides by city
+
+1. Create variable **city_state** to concatenate city and state information
+
+2. Count the total number of homicides and the number of unsolved homicides by
+location
+```{r}
+homicide_df <- homicide_df %>% 
+  mutate(city_state = str_c(city, ', ', state))
+
+options(tibble.print_max = Inf)
+homicide_df %>% 
+  group_by(city_state) %>% 
+  summarize(total_homicides = n(),
+            unsolved_homicides = 
+              length(which(disposition != 'Closed by arrest')))
+```
+
